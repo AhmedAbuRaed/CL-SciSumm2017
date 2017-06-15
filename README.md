@@ -12,3 +12,7 @@ rest of the params are basically arguments to control the flow of the processing
 GS : Annotate Gold Standard
 DI : Annotate Dr Inventor
 BN : Annotate Babelnet Synset IDs
+
+Will have also 
+WE : for word embeddings
+CV : context vectors
