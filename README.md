@@ -2,7 +2,7 @@
 
 an example of passed parameters is
 
-"" "PreProcessPipeline" "D:\Research\UPF\Projects\CL-SciSumm2017" "ALL_training_train" "GS" "DI" "BN"
+"" "PreProcessPipeline" "D:\Research\UPF\Projects\CL-SciSumm2017" "ALL_training_train" "GS" "DI" "BN" "CV" "GZ" "NG" "WE"
 
 Param 0 - always empty
 
