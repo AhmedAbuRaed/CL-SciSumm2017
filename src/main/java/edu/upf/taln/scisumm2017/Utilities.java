@@ -13,18 +13,14 @@ import gate.util.OffsetComparator;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.deeplearning4j.models.word2vec.Word2Vec;
 
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by Ahmed on 6/7/17.
@@ -98,23 +94,13 @@ public class Utilities {
                             annotation.setAnnotator(fields[10].trim().split(":")[1].trim().replaceAll(" ", "_"));
                         }
                     } else {
-                        if (fields.length == 8) {
-                            if (fields[7].trim().split(":")[1].trim().contains(",")) {
-                                annotation.setAnnotator(fields[7].trim().split(":")[1].trim()
-                                        .substring(0, fields[7].trim().split(":")[1].trim().indexOf(",")).replaceAll(" ", "_"));
-                            } else {
-                                annotation.setAnnotator(fields[7].trim().split(":")[1].trim().replaceAll(" ", "_"));
-                            }
+                        if (fields[7].trim().split(":")[1].trim().contains(",")) {
+                            annotation.setAnnotator(fields[7].trim().split(":")[1].trim()
+                                    .substring(0, fields[7].trim().split(":")[1].trim().indexOf(",")).replaceAll(" ", "_"));
                         } else {
-                            if (fields[10].trim().split(":")[1].trim().contains(",")) {
-                                annotation.setAnnotator(fields[10].trim().split(":")[1].trim()
-                                        .substring(0, fields[10].trim().split(":")[1].trim().indexOf(",")).replaceAll(" ", "_"));
-                            } else {
-                                annotation.setAnnotator(fields[10].trim().split(":")[1].trim().replaceAll(" ", "_"));
-                            }
+                            annotation.setAnnotator(fields[7].trim().split(":")[1].trim().replaceAll(" ", "_"));
                         }
                     }
-
                     annotationsList.add(annotation);
                 }
             }
@@ -136,6 +122,7 @@ public class Utilities {
         HashMap<String, Document> processedDocuments = new HashMap<String, Document>();
         ArrayList<String> reference_Offset = new ArrayList<>();
         String reference_Text = null;
+        String annotator = null;
         ArrayList<String> discourse_Facet = new ArrayList<String>();
         Document rp = null;
         Document cp = null;
@@ -153,7 +140,7 @@ public class Utilities {
                 reference_Text = annotation.getReference_Text();
                 discourse_Facet = annotation.getDiscourse_Facet();
             }
-            String annotator = annotation.getAnnotator();
+            annotator = annotation.getAnnotator();
 
             rp = RCDocuments.get(reference_Article);
             cp = RCDocuments.get(citing_Article);
@@ -211,7 +198,6 @@ public class Utilities {
                     }
                 }
             }
-
             if (generateTraining) {
                 //Annotate The reference
                 for (String ro : reference_Offset) {
@@ -262,6 +248,243 @@ public class Utilities {
         return processedDocuments;
     }
 
+    public static HashMap<String, Document> applyCosineSimilarities
+            (HashMap<String, Document> RCDocuments, File rfolder) {
+        HashMap<String, Document> processedDocuments = new HashMap<String, Document>();
+        HashMap<String, FeatureMap> combinedcpAnnotatorsIDsNormalizedVectors;
+
+        Document rp = RCDocuments.get(rfolder.getName());
+
+        AnnotationSet rpAnalysis = rp.getAnnotations("Analysis");
+        AnnotationSet rpNormalizedVectors = rpAnalysis.get("Vector_Norm");
+
+        for (String key : RCDocuments.keySet()) {
+            if (!key.equals(rfolder.getName())) {
+                Document cp = RCDocuments.get(key);
+
+                AnnotationSet rpSimilarity = rp.getAnnotations("Similarities");
+                AnnotationSet cpAnalysis = cp.getAnnotations("Analysis");
+                AnnotationSet cpCitMarkups = cp.getAnnotations("CITATIONS");
+                AnnotationSet cpNormalizedVectors = cpAnalysis.get("Vector_Norm");
+                AnnotationSet rpSentences = rpAnalysis.get("Sentence");
+
+                AnnotationSet rpSentencesNVOffset;
+
+                Annotation rpSentenceNVOffset;
+
+                Long cpStartA, cpEndA, rpStartNV = null, rpEndNV = null, rpMaxStartNVS, rpMAxEndNNVS;
+                Iterator cpAnnotatorsIterator = cpCitMarkups.iterator();
+
+                double maxCosineValue = -1;
+                int rpMaxNormalizedVectorID = 0;
+
+                combinedcpAnnotatorsIDsNormalizedVectors = combinecpAnnotatorsIDsNormalizedVectors(cpCitMarkups, cpNormalizedVectors);
+                for (String id : combinedcpAnnotatorsIDsNormalizedVectors.keySet()) {
+                    FeatureMap rpfm_anns = Factory.newFeatureMap();
+                    Iterator rpNormalizedVectorsIterator = rpNormalizedVectors.iterator();
+
+                    while (rpNormalizedVectorsIterator.hasNext()) {
+                        Annotation rpNormalizedVector = (Annotation) rpNormalizedVectorsIterator.next();
+                        rpStartNV = rpNormalizedVector.getStartNode().getOffset();
+                        rpEndNV = rpNormalizedVector.getEndNode().getOffset();
+                        FeatureMap rpNormalizedVectorfm = rpNormalizedVector.getFeatures();
+
+                        rpSentencesNVOffset = rpSentences.get(rpStartNV);
+
+                        if (rpSentencesNVOffset.size() > 0) {
+                            rpSentenceNVOffset = rpSentencesNVOffset.iterator().next();
+                            FeatureMap rpSentencefm = rpSentenceNVOffset.getFeatures();
+                            rpSentencefm.put("sim_" + id,
+                                    summa.scorer.Cosine.cosine1(combinedcpAnnotatorsIDsNormalizedVectors.get(id),
+                                            rpNormalizedVectorfm));
+                            if (summa.scorer.Cosine.cosine1(combinedcpAnnotatorsIDsNormalizedVectors.get(id),
+                                    rpNormalizedVectorfm) > maxCosineValue) {
+                                maxCosineValue = summa.scorer.Cosine.cosine1(combinedcpAnnotatorsIDsNormalizedVectors.get(id),
+                                        rpNormalizedVectorfm);
+                                rpMaxNormalizedVectorID = rpNormalizedVector.getId();
+                            }
+                        } else {
+                            System.out.println("Could not find the Normalized Victor Sentence.");
+                        }
+                    }
+
+                    Annotation rpMaxNormalizedVector = rpNormalizedVectors.get(rpMaxNormalizedVectorID);
+                    rpMaxStartNVS = rpMaxNormalizedVector.getStartNode().getOffset();
+                    rpMAxEndNNVS = rpMaxNormalizedVector.getEndNode().getOffset();
+
+                    rpfm_anns.put("MatchCitanceID", id);
+                    rpfm_anns.put("MatchSimilarityValue", maxCosineValue);
+
+                    try {
+                        rpSimilarity.add(rpMaxStartNVS, rpMAxEndNNVS, "Match", rpfm_anns);
+                    } catch (InvalidOffsetException e) {
+                        e.printStackTrace();
+                    }
+                }
+                maxCosineValue = -1;
+                rpMaxNormalizedVectorID = 0;
+            }
+        }
+
+        RCDocuments.put(rfolder.getName(), rp);
+
+        processedDocuments = RCDocuments;
+
+        return processedDocuments;
+    }
+
+    public static HashMap<String, Document> applyBabelnetCosineSimilarities
+            (HashMap<String, Document> RCDocuments, File rfolder) {
+        HashMap<String, Document> processedDocuments = new HashMap<String, Document>();
+        HashMap<String, FeatureMap> combinedcpAnnotatorsIDsBabelnetNormalizedVectors;
+
+        Document rp = RCDocuments.get(rfolder.getName());
+
+        AnnotationSet rpBabelnet = rp.getAnnotations("Babelnet");
+        AnnotationSet rpBabelnetNormalizedVectors = rpBabelnet.get("BNVector_Norm");
+
+        for (String key : RCDocuments.keySet()) {
+            if (!key.equals(rfolder.getName())) {
+                Document cp = RCDocuments.get(key);
+
+                AnnotationSet rpSimilarity = rp.getAnnotations("BabelnetSimilarities");
+                AnnotationSet cpBabelnet = cp.getAnnotations("Babelnet");
+                AnnotationSet cpCitMarkups = cp.getAnnotations("CITATIONS");
+                AnnotationSet cpBabelnetNormalizedVectors = cpBabelnet.get("BNVector_Norm");
+                AnnotationSet rpSentences = rpBabelnet.get("Sentence");
+
+                AnnotationSet rpSentencesNVOffset;
+
+                Annotation rpSentenceNVOffset;
+
+                Long cpStartA, cpEndA, rpStartNV = null, rpEndNV = null, rpMaxStartNVS, rpMAxEndNNVS;
+                Iterator cpAnnotatorsIterator = cpCitMarkups.iterator();
+
+                double maxCosineValue = -1;
+                int rpMaxBabelnetNormalizedVectorID = 0;
+
+                combinedcpAnnotatorsIDsBabelnetNormalizedVectors = combinecpAnnotatorsIDsNormalizedVectors(cpCitMarkups, cpBabelnetNormalizedVectors);
+                for (String id : combinedcpAnnotatorsIDsBabelnetNormalizedVectors.keySet()) {
+                    FeatureMap rpfm_anns = Factory.newFeatureMap();
+                    Iterator rpBabelnetNormalizedVectorsIterator = rpBabelnetNormalizedVectors.iterator();
+
+                    while (rpBabelnetNormalizedVectorsIterator.hasNext()) {
+                        Annotation rpBabelnetNormalizedVector = (Annotation) rpBabelnetNormalizedVectorsIterator.next();
+                        rpStartNV = rpBabelnetNormalizedVector.getStartNode().getOffset();
+                        rpEndNV = rpBabelnetNormalizedVector.getEndNode().getOffset();
+                        FeatureMap rpBabelnetNormalizedVectorfm = rpBabelnetNormalizedVector.getFeatures();
+
+                        rpSentencesNVOffset = rpSentences.get(rpStartNV);
+
+                        if (rpSentencesNVOffset.size() > 0) {
+                            rpSentenceNVOffset = rpSentencesNVOffset.iterator().next();
+                            FeatureMap rpSentencefm = rpSentenceNVOffset.getFeatures();
+                            FeatureMap t = combinedcpAnnotatorsIDsBabelnetNormalizedVectors.get(id);
+                            FeatureMap k = rpBabelnetNormalizedVectorfm;
+                            double b = summa.scorer.Cosine.cosine1(t, k);
+
+                            rpSentencefm.put("BNsim_" + id,
+                                    summa.scorer.Cosine.cosine1(combinedcpAnnotatorsIDsBabelnetNormalizedVectors.get(id),
+                                            rpBabelnetNormalizedVectorfm));
+                            if (summa.scorer.Cosine.cosine1(combinedcpAnnotatorsIDsBabelnetNormalizedVectors.get(id),
+                                    rpBabelnetNormalizedVectorfm) > maxCosineValue) {
+                                maxCosineValue = summa.scorer.Cosine.cosine1(combinedcpAnnotatorsIDsBabelnetNormalizedVectors.get(id),
+                                        rpBabelnetNormalizedVectorfm);
+                                rpMaxBabelnetNormalizedVectorID = rpBabelnetNormalizedVector.getId();
+                            }
+                        } else {
+                            System.out.println("Could not find the Normalized Victor Sentence.");
+                        }
+                    }
+
+                    Annotation rpMaxBabelnetNormalizedVector = rpBabelnetNormalizedVectors.get(rpMaxBabelnetNormalizedVectorID);
+                    rpMaxStartNVS = rpMaxBabelnetNormalizedVector.getStartNode().getOffset();
+                    rpMAxEndNNVS = rpMaxBabelnetNormalizedVector.getEndNode().getOffset();
+
+                    rpfm_anns.put("MatchCitanceID", id);
+                    rpfm_anns.put("MatchSimilarityValue", maxCosineValue);
+
+                    try {
+                        rpSimilarity.add(rpMaxStartNVS, rpMAxEndNNVS, "Match", rpfm_anns);
+                    } catch (InvalidOffsetException e) {
+                        e.printStackTrace();
+                    }
+                }
+                maxCosineValue = -1;
+                rpMaxBabelnetNormalizedVectorID = 0;
+            }
+        }
+
+        RCDocuments.put(rfolder.getName(), rp);
+
+        processedDocuments = RCDocuments;
+
+        return processedDocuments;
+    }
+
+    public static HashMap<String, FeatureMap> combinecpAnnotatorsIDsNormalizedVectors(AnnotationSet
+                                                                                              cpAnnotators, AnnotationSet cpNormalizedVectors) {
+        HashMap<String, FeatureMap> combinedcpAnnotatorsIDsNormalizedVectors = new HashMap<String, FeatureMap>();
+        AnnotationSet cpAnnotatorNormalizedVectors;
+        Annotation cpAnnotator;
+        Annotation cpAnnotatorNormalizedVector = null;
+        FeatureMap cpAnnotatorfm;
+        Long cpStartA, cpEndA;
+
+        Iterator cpAnnotatorsIterator = cpAnnotators.iterator();
+        while (cpAnnotatorsIterator.hasNext()) {
+            cpAnnotator = (Annotation) cpAnnotatorsIterator.next();
+            cpStartA = cpAnnotator.getStartNode().getOffset();
+            cpEndA = cpAnnotator.getEndNode().getOffset();
+
+            cpAnnotatorfm = cpAnnotator.getFeatures();
+            String id = (String) cpAnnotatorfm.get("id");
+
+            if (combinedcpAnnotatorsIDsNormalizedVectors.containsKey(id)) {
+                cpAnnotatorNormalizedVectors = cpNormalizedVectors.get(cpStartA);
+
+                if (cpAnnotatorNormalizedVectors.size() > 0) {
+                    cpAnnotatorNormalizedVector = cpAnnotatorNormalizedVectors.iterator().next();
+                    combinedcpAnnotatorsIDsNormalizedVectors.put(id,
+                            combineNormalizedVectors(combinedcpAnnotatorsIDsNormalizedVectors.get(id),
+                                    cpAnnotatorNormalizedVector.getFeatures()));
+                } else {
+                    System.out.println("Could not find the Annotator Normalized Victor.");
+                }
+            } else {
+                cpAnnotatorNormalizedVectors = cpNormalizedVectors.get(cpStartA);
+                if (cpAnnotatorNormalizedVectors.size() > 0) {
+                    cpAnnotatorNormalizedVector = cpAnnotatorNormalizedVectors.iterator().next();
+                    combinedcpAnnotatorsIDsNormalizedVectors.put(id, cpAnnotatorNormalizedVector.getFeatures());
+                } else {
+                    System.out.println("Could not find the Annotator Normalized Victor.");
+                }
+            }
+        }
+
+        return combinedcpAnnotatorsIDsNormalizedVectors;
+    }
+
+    public static FeatureMap combineNormalizedVectors(FeatureMap normalizedVector1, FeatureMap
+            normalizedVector2) {
+        FeatureMap combineNormalizedVector = Factory.newFeatureMap();
+        for (Object key : normalizedVector1.keySet()) {
+            if (normalizedVector2.containsKey(key)) {
+                combineNormalizedVector.put(key, String.valueOf((new Double((String) normalizedVector1.get(key)) +
+                        new Double((String) normalizedVector2.get(key))) / 2.0));
+            } else {
+                combineNormalizedVector.put(key, String.valueOf((new Double((String) normalizedVector1.get(key)) / 2.0)));
+            }
+        }
+
+        for (Object key : normalizedVector2.keySet()) {
+            if (!normalizedVector1.containsKey(key)) {
+                combineNormalizedVector.put(key, String.valueOf((new Double((String) normalizedVector2.get(key)) / 2.0)));
+            }
+        }
+        return combineNormalizedVector;
+    }
+
     public static void exportGATEDocuments(HashMap<String, Document> processedRCDocuments, String
             rfolder, String outputFolder, String extension) {
         PrintWriter pw = null;
@@ -284,6 +507,7 @@ public class Utilities {
                 pw.println(processedRCDocuments.get(docKey).toXml());
                 pw.flush();
                 pw.close();
+                Factory.deleteResource(processedRCDocuments.get(docKey));
             } else {
                 // creating the directory failed
                 System.out.println("failed trying to create the directory");
@@ -385,5 +609,74 @@ public class Utilities {
         return Pair.of(document, queryCounter);
     }
 
+    public static gate.Document annotateWord2VecAnnotations(gate.Document document, Word2Vec word2Vec, String annotationSetName) {
+        Iterator tokensIterator = document.getAnnotations("Analysis").get("Token").iterator();
+        AnnotationSet annotationSet = document.getAnnotations("Word2Vec");
+
+        while (tokensIterator.hasNext()) {
+            Annotation token = (Annotation) tokensIterator.next();
+            if (token.getFeatures().get("kind").toString().equals("word")) {
+
+                if (word2Vec.hasWord(token.getFeatures().get("string").toString().toLowerCase())) {
+                    double[] wordVector = word2Vec.getWordVector(token.getFeatures().get("string").toString().toLowerCase());
+                    if (wordVector != null) {
+                        FeatureMap fm = Factory.newFeatureMap();
+                        StringBuilder vector = new StringBuilder();
+                        for (int i = 0; i < wordVector.length; i++) {
+                            vector.append(wordVector[i]);
+                            vector.append(" ");
+                        }
+                        fm.put(token.getFeatures().get("string").toString().toLowerCase(), vector.toString().trim());
+                        try {
+                            annotationSet.add(token.getStartNode().getOffset(), token.getEndNode().getOffset(), annotationSetName, fm);
+                        } catch (InvalidOffsetException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        }
+
+        return document;
+    }
+
+    public static Document fillDocumentMissingLemmas(Document document) {
+        for (Annotation annotation : document.getAnnotations("Analysis").get("Token")) {
+            FeatureMap fm = annotation.getFeatures();
+            if (!fm.containsKey("lemma")) {
+                if (fm.containsKey("string")) {
+                    fm.put("lemma", fm.get("string"));
+                } else {
+                    try {
+                        String value = String.valueOf(document.getContent().getContent(annotation.getStartNode().getOffset(), annotation.getEndNode().getOffset()));
+                        fm.put("lemma", value.toLowerCase());
+                    } catch (InvalidOffsetException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return document;
+    }
+
+    public static Document fillDocumentBabelNetKind(Document document) {
+        for (Annotation annotation : document.getAnnotations("Babelnet").get("Entity")) {
+            FeatureMap fm = annotation.getFeatures();
+            if (!fm.containsKey("kind")) {
+                fm.put("kind", "entity");
+            }
+        }
+        return document;
+    }
+
+    public static Document fillDocumentMissingPOS(Document document) {
+        for (Annotation annotation : document.getAnnotations("Analysis").get("Token")) {
+            FeatureMap fm = annotation.getFeatures();
+            if (!fm.containsKey("category")) {
+                fm.put("category", "-LRB-");
+            }
+        }
+        return document;
+    }
 
 }

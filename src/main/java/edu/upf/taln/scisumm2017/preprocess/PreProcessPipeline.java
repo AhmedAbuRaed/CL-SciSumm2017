@@ -2,45 +2,34 @@ package edu.upf.taln.scisumm2017.preprocess;
 
 import edu.upf.taln.scisumm2017.Main;
 import edu.upf.taln.scisumm2017.Utilities;
+import gate.AnnotationSet;
 import gate.Document;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.word2vec.Word2Vec;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.util.HashMap;
 
 /**
  * Created by Ahmed on 6/7/17.
  */
 public class PreProcessPipeline {
-    public static void PreProcess(String args[]) {
-        String workingDirectory = args[2];
-
-        String[] targetOptions = args[3].split("\\_");
-        String target = targetOptions[0];
-        String datasetType = targetOptions[1];
-        boolean isTrain;
-        if (targetOptions[2].equals("train")) {
-            isTrain = true;
-        } else {
-            isTrain = false;
-        }
+    public static void PreProcess(String workingDirectory, String datasetType, String target, boolean isTrain,
+                                  Word2Vec gvec, Word2Vec aclvec, String [] components) {
 
         if (target.equals("ALL")) {
             File corpus = new File(workingDirectory + "/datasets/" + datasetType);
+
             for (File folder : corpus.listFiles()) {
                 System.out.println("PreProcessing Cluster:" + folder.getName());
                 File inputFolder = new File(folder.getPath() + File.separator + folder.getName());
                 HashMap<String, Document> documents = Utilities.extractDocumentsFromBaseFolder(inputFolder);
 
-                for (int i = 4; i < args.length; i++) {
-                    if (args[i].equals("GS")) {
+                for (int i = 0; i < components.length; i++) {
+                    if (components[i].equals("GS")) {
                         documents = GoldAnnotations.run(documents, folder, isTrain);
                     }
-                    if (args[i].equals("DI")) {
+                    if (components[i].equals("DI")) {
                         PrintStream out = System.out;
                         System.setOut(new PrintStream(new OutputStream() {
                             @Override
@@ -55,22 +44,43 @@ public class PreProcessPipeline {
                         } finally {
                             System.setOut(out);
                         }
+                        System.gc();
                     }
-                    if(args[i].equals("BN"))
+                    if(components[i].equals("BN"))
                     {
                         documents = Babelfy.run(documents);
+                        System.gc();
                     }
-                    if (args[i].equals("CV")) {
+                    if (components[i].equals("CV")) {
+                        for(String key: documents.keySet())
+                        {
+                            documents.put(key, Utilities.fillDocumentMissingLemmas(documents.get(key)));
+                            documents.put(key, Utilities.fillDocumentBabelNetKind(documents.get(key)));
+                        }
 
+                        documents = ContextVectors.run(documents, workingDirectory);
+                        System.gc();
                     }
-                    if (args[i].equals("WE")) {
-                        //Get file from resources folder
-                        ClassLoader classLoader = Main.class.getClassLoader();
-                        File gModel = new File(classLoader.getResource("GoogleNews-vectors-negative300.bin.gz").getFile());
-                        Word2Vec gvec = WordVectorSerializer.readWord2VecModel(gModel);
+                    if(components[i].equals("GZ"))
+                    {
+                        for(String key: documents.keySet())
+                        {
+                            documents.put(key, Utilities.fillDocumentMissingPOS(documents.get(key)));
+                        }
+                        documents = Gazetteers.run(documents, workingDirectory);
+                        System.gc();
+                    }
+                    if(components[i].equals("NG"))
+                    {
+                        documents = NGrams.run(documents, workingDirectory);
+                        System.gc();
+                    }
+                    if (components[i].equals("WE")) {
+                        documents = WordEmbedding.run(documents, gvec, "GoogleNews");
+                        System.gc();
 
-                        File aclModel = new File(classLoader.getResource("ACL300").getFile());
-                        Word2Vec aclvec = WordVectorSerializer.readWord2VecModel(aclModel);
+                        documents = WordEmbedding.run(documents, aclvec, "ACL");
+                        System.gc();
                     }
                 }
                 Utilities.exportGATEDocuments(documents, folder.getName(), folder.getPath() + "/output", "PreProcessed");
@@ -82,11 +92,12 @@ public class PreProcessPipeline {
             File inputFolder = new File(clusterFolder.getPath() + File.separator + clusterFolder.getName());
             HashMap<String, Document> documents = Utilities.extractDocumentsFromBaseFolder(inputFolder);
 
-            for (int i = 4; i < args.length; i++) {
-                if (args[i].equals("GS")) {
+            for (int i = 4; i < components.length; i++) {
+                if (components[i].equals("GS")) {
                     documents = GoldAnnotations.run(documents, clusterFolder, isTrain);
+                    System.gc();
                 }
-                if (args[i].equals("DI")) {
+                if (components[i].equals("DI")) {
                     PrintStream out = System.out;
                     System.setOut(new PrintStream(new OutputStream() {
                         @Override
@@ -101,25 +112,50 @@ public class PreProcessPipeline {
                     } finally {
                         System.setOut(out);
                     }
+                    System.gc();
                 }
-                if(args[i].equals("BN"))
+                if(components[i].equals("BN"))
                 {
                     documents = Babelfy.run(documents);
+                    System.gc();
                 }
-                if (args[i].equals("CV")) {
+                if (components[i].equals("CV")) {
+                    for(String key: documents.keySet())
+                    {
+                        documents.put(key, Utilities.fillDocumentMissingLemmas(documents.get(key)));
+                        documents.put(key, Utilities.fillDocumentBabelNetKind(documents.get(key)));
+                    }
 
+                    documents = ContextVectors.run(documents, workingDirectory);
+                    System.gc();
                 }
-                if (args[i].equals("WE")) {
-                    //Get file from resources folder
-                    ClassLoader classLoader = Main.class.getClassLoader();
-                    File gModel = new File(classLoader.getResource("GoogleNews-vectors-negative300.bin.gz").getFile());
-                    Word2Vec gvec = WordVectorSerializer.readWord2VecModel(gModel);
+                if(components[i].equals("GZ"))
+                {
+                    for(String key: documents.keySet())
+                    {
+                        documents.put(key, Utilities.fillDocumentMissingPOS(documents.get(key)));
+                    }
+                    documents = Gazetteers.run(documents, workingDirectory);
+                    System.gc();
+                }
+                if(components[i].equals("NG"))
+                {
+                    documents = NGrams.run(documents, workingDirectory);
+                    System.gc();
+                }
+                if (components[i].equals("WE")) {
+                    documents = WordEmbedding.run(documents, gvec, "GoogleNews");
 
-                    File aclModel = new File(classLoader.getResource("ACL300").getFile());
-                    Word2Vec aclvec = WordVectorSerializer.readWord2VecModel(aclModel);
+                    gvec = null;
+                    System.gc();
+
+                    documents = WordEmbedding.run(documents, aclvec, "ACL");
+
+                    aclvec = null;
+                    System.gc();
                 }
             }
-            Utilities.exportGATEDocuments(documents, clusterFolder.getName(), clusterFolder.getPath() + "/output", "GOLD");
+            Utilities.exportGATEDocuments(documents, clusterFolder.getName(), clusterFolder.getPath() + "/output", "PreProcessed");
         }
     }
 }
