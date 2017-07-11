@@ -21,14 +21,10 @@ Param 3 - three parts part1_part2_part3
 rest of the params are basically arguments to control the flow of the processing. In the example here:
 
 GS : Annotate Gold Standard
-
 DI : Annotate Dr Inventor
-
 BN : Annotate Babelnet Synset IDs
-
-
-Will have also 
-
+CV : context vectors
+GZ : Gazetteers
+NG : N-grams
 WE : for word embeddings
 
-CV : context vectors
