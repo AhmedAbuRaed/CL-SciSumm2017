@@ -2,7 +2,7 @@
 
 an example of passed parameters is
 
-"" "PreProcessPipeline" "D:\Research\UPF\Projects\CL-SciSumm2017" "ALL_training_train" "GS" "DI" "BN"
+"" "PreProcessPipeline" "D:\Research\UPF\Projects\CL-SciSumm2017" "ALL_training_train" "GS" "DI" "BN" "CV" "GZ" "NG" "WE"
 
 Param 0 - always empty
 
@@ -26,9 +26,12 @@ DI : Annotate Dr Inventor
 
 BN : Annotate Babelnet Synset IDs
 
+CV : context vectors
 
-Will have also 
+GZ : Gazetteers
+
+NG : N-grams
 
 WE : for word embeddings
 
-CV : context vectors
+
