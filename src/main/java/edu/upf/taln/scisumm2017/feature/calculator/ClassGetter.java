@@ -31,7 +31,31 @@ public class ClassGetter implements FeatCalculator<String, TrainingExample, Docu
         } else {
             MyString Value = new MyString(null);
 
-            Value.setValue(obj.getFacet());
+            String facet = obj.getFacet();
+            if (facet != null) {
+                switch (facet) {
+                    case "Aim_Citation":
+                    case "Aim_Facet":
+                        Value.setValue("Aim_Citation");
+                        break;
+                    case "Hypothesis_Citation":
+                    case "Hypothesis_Facet":
+                        Value.setValue("Hypothesis_Citation");
+                        break;
+                    case "Method_Citation":
+                    case "Method_Facet":
+                        Value.setValue("Method_Citation");
+                        break;
+                    case "Results_Citation":
+                    case "Results_Facet":
+                        Value.setValue("Results_Citation");
+                        break;
+                    case "Implication_Citation":
+                    case "Implication_Facet":
+                        Value.setValue("Implication_Citation");
+                        break;
+                }
+            }
 
             return Value;
         }

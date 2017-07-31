@@ -92,7 +92,7 @@ public class PreProcessPipeline {
             File inputFolder = new File(clusterFolder.getPath() + File.separator + clusterFolder.getName());
             HashMap<String, Document> documents = Utilities.extractDocumentsFromBaseFolder(inputFolder);
 
-            for (int i = 4; i < components.length; i++) {
+            for (int i = 0; i < components.length; i++) {
                 if (components[i].equals("GS")) {
                     documents = GoldAnnotations.run(documents, clusterFolder, isTrain);
                     System.gc();

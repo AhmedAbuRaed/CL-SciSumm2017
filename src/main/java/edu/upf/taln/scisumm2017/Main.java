@@ -65,11 +65,13 @@ public class Main {
                 break;
             case "ProcessPipeline":
                 if (isTrain) {
-                    ProcessAsTrainingPipeline.ProcessAsTraining(workingDirectory, datasetType, target);
+                    //ProcessAsTrainingPipeline.ProcessAsTraining(workingDirectory, datasetType, target);
+                    ProcessAsTrainingPipeline.ProcessAllSentencesAsTraining(workingDirectory, datasetType, target);
                 } else {
-                    ProcessAsTestingPipeline.ProcessAsTesting();
+                    //ProcessAsTestingPipeline.ProcessAsTesting(workingDirectory, datasetType, target);
+                    //ProcessAsTestingPipeline.ProcessAsSplitTesting(workingDirectory, datasetType, target);
+                    ProcessAsTestingPipeline.ProcessAsSplitOneTesting(workingDirectory, datasetType, target);
                 }
-
                 break;
         }
     }

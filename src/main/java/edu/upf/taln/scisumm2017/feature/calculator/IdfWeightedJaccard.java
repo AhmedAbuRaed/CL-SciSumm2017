@@ -73,7 +73,7 @@ public class IdfWeightedJaccard implements FeatCalculator<Double, TrainingExampl
     
     @Override
     public MyDouble calculateFeature(TrainingExample trainingExample, DocumentCtx documentCtx, String string) {
-        MyDouble retValue = new MyDouble(null);
+        MyDouble retValue = new MyDouble(0d);
         Map<String, Double> idfValuesLemmaPrefixes = new HashMap<>();
         List<String> significativePosList = Arrays.asList(significativePos);
         List<String> stopWordsList = Arrays.asList(stopWords);           

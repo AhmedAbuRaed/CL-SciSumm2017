@@ -32,19 +32,26 @@ public class CosineSimilarity implements FeatCalculator<Double, TrainingExample,
             AnnotationSet rpSimilarities = rp.getAnnotations("Analysis").get("Sentence").get(refSentence.getStartNode().getOffset(),
                     refSentence.getEndNode().getOffset());
 
+            AnnotationSet rpBabelnetSimilarities = rp.getAnnotations("Babelnet").get("Sentence").get(refSentence.getStartNode().getOffset(),
+                    refSentence.getEndNode().getOffset());
+
             AnnotationSet cpAnnotators = cp.getAnnotations("CITATIONS").get(citSentence.getStartNode().getOffset(),
                     citSentence.getEndNode().getOffset());
 
-            if (rpSimilarities.size() > 0 && cpAnnotators.size() > 0) {
-                Annotation rpSentence = rpSimilarities.iterator().next();
-                Annotation cpAnnotator = cpAnnotators.iterator().next();
-
-                if (cosineType.equals("LEMMA")) {
+            if (cosineType.equals("LEMMA")) {
+                if (rpSimilarities.size() > 0 && cpAnnotators.size() > 0) {
+                    Annotation rpSentence = rpSimilarities.iterator().next();
+                    Annotation cpAnnotator = cpAnnotators.iterator().next();
                     value.setValue((Double) rpSentence.getFeatures().get("sim_" + cpAnnotator.getFeatures().get("id")));
-                } else if (cosineType.equals("BABELNET")) {
+                }
+            } else if (cosineType.equals("BABELNET")) {
+                if (rpBabelnetSimilarities.size() > 0 && cpAnnotators.size() > 0) {
+                    Annotation rpSentence = rpBabelnetSimilarities.iterator().next();
+                    Annotation cpAnnotator = cpAnnotators.iterator().next();
                     value.setValue((Double) rpSentence.getFeatures().get("BNsim_" + cpAnnotator.getFeatures().get("id")));
                 }
             }
+
 
         } catch (Exception e) {
             e.printStackTrace();

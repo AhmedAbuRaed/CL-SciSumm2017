@@ -68,7 +68,7 @@ public class Jaccard implements FeatCalculator<Double, TrainingExample, Document
     
     @Override    
     public MyDouble calculateFeature(TrainingExample trainingExample, DocumentCtx documentCtx, String string) {
-        MyDouble retValue = new MyDouble(null);
+        MyDouble retValue = new MyDouble(0d);
         List<String> significativePosList = Arrays.asList(significativePos);
         List<String> stopWordsList = Arrays.asList(stopWords);           
         // Get GATE documents

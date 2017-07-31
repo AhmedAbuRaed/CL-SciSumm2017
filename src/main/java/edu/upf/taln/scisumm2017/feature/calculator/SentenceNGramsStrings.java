@@ -40,20 +40,20 @@ public class SentenceNGramsStrings implements FeatCalculator<String, TrainingExa
 
             switch (target) {
                 case "RP":
-                    for (Annotation annotation : rp.getAnnotations(nGramsTypeASName).get(nGramsASName).get(refSentence.getStartNode().getOffset(), refSentence.getEndNode().getOffset())) {
+                    for (Annotation annotation : rp.getAnnotations(nGramsASName).get(nGramsTypeASName).get(refSentence.getStartNode().getOffset(), refSentence.getEndNode().getOffset())) {
                         val = val + " " + annotation.getFeatures().get("string").toString().replaceAll(" ", "_");
                     }
                     break;
                 case "CP":
-                    for (Annotation annotation : cp.getAnnotations(nGramsTypeASName).get(nGramsASName).get(citSentence.getStartNode().getOffset(), citSentence.getEndNode().getOffset())) {
+                    for (Annotation annotation : cp.getAnnotations(nGramsASName).get(nGramsTypeASName).get(citSentence.getStartNode().getOffset(), citSentence.getEndNode().getOffset())) {
                         val = val + " " + annotation.getFeatures().get("string").toString().replaceAll(" ", "_");
                     }
                     break;
                 case "BOTH":
-                    for (Annotation annotation : rp.getAnnotations(nGramsTypeASName).get(nGramsASName).get(refSentence.getStartNode().getOffset(), refSentence.getEndNode().getOffset())) {
+                    for (Annotation annotation : rp.getAnnotations(nGramsASName).get(nGramsTypeASName).get(refSentence.getStartNode().getOffset(), refSentence.getEndNode().getOffset())) {
                         val = val + " " + annotation.getFeatures().get("string").toString().replaceAll(" ", "_");
                     }
-                    for (Annotation annotation : cp.getAnnotations(nGramsTypeASName).get(nGramsASName).get(citSentence.getStartNode().getOffset(), citSentence.getEndNode().getOffset())) {
+                    for (Annotation annotation : cp.getAnnotations(nGramsASName).get(nGramsTypeASName).get(citSentence.getStartNode().getOffset(), citSentence.getEndNode().getOffset())) {
                         val = val + " " + annotation.getFeatures().get("string").toString().replaceAll(" ", "_");
                     }
                     break;
